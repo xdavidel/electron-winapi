@@ -1,0 +1,21 @@
+{
+  "name": "winapi",
+  "version": "1.0.0",
+  "description": "running winapi from node",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w ."
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^1.7.9",
+    "electron-rebuild": "^1.6.0"
+  },
+  "dependencies": {
+    "ffi": "^2.2.0",
+    "ref-struct": "^1.1.0"
+  }
+}
