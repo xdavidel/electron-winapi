@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Active Processes</title>
+    <link rel="stylesheet" href="./processes-window.css">
+    <link rel="stylesheet" href="../node_modules/bulma/css/bulma.css">
+</head>
+
+<body>
+    <div class="section">
+        <div class="field">
+            <label class="label">Search</label>
+            <div class="control">
+                <input id="search-input" class="input" type="text" placeholder="Process Name...">
+            </div>
+            <p class="help">Filter processes by name</p>
+        </div>
+    </div>
+
+    <div id="loading-space" class="has-text-centered">
+        <div class="button field is-loading is-large is-block"></div>
+        <div>Loading...</div>
+    </div>
+    <div id="processes-space" class="section">
+        <table class="table is-hoverable is-fullwidth">
+            <thead>
+                <tr>
+                    <th>Process Id</th>
+                    <th>Process Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody id="processes">
+
+            </tbody>
+        </table>
+    </div>
+
+    <script src="./processes-window.js"></script>
+</body>
+
+</html>

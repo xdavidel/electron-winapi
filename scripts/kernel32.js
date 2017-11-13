@@ -1,66 +1,32 @@
 const ffi = require('ffi');
 const ref = require('ref');
-const { WORD, DWORD, DWORD_PTR, LPVOID, IntPtr, LPTSTR, LPBYTE, HANDLE } = require('./types')
-const Struct = require('ref-struct');
+const { WORD, DWORD, DWORD_PTR, LPVOID, IntPtr, LPTSTR, LPBYTE, HANDLE, BOOL } = require('./types')
+const { SystemInfo, StartupInfo, SecurityAttributes, ProcessInformation, DebugEvent } = require('./structs')
 
-let SystemInfo = Struct({
-    'wProcessorArchitecture': WORD,
-    'wReserved': WORD,
-    'dwPageSize': DWORD,
-    'lpMinimumApplicationAddress': DWORD,
-    'lpMaximumApplicationAddress': DWORD,
-    'dwActiveProcessorMask': DWORD,
-    'dwNumberOfProcessors': DWORD,
-    'dwProcessorType': DWORD,
-    'dwAllocationGranularity': DWORD,
-    'dwProcessorLevel': WORD,
-    'dwProcessorRevision': WORD
-});
-let SystemInfoPtr = ref.refType(SystemInfo);
-
-let StartupInfo = Struct({
-    "cb": DWORD,
-    "lpReserved": LPTSTR,
-    "lpDesktop": LPTSTR,
-    "lpTitle": LPTSTR,
-    "dwX": DWORD,
-    "dwY": DWORD,
-    "dwXSize": DWORD,
-    "dwYSize": DWORD,
-    "dwXCountChars": DWORD,
-    "dwYCountChars": DWORD,
-    "dwFillAttribute": DWORD,
-    "dwFlags": DWORD,
-    "wShowWindow": WORD,
-    "cbReserved2": WORD,
-    "lpReserved2": LPBYTE,
-    "hStdInput": HANDLE,
-    "hStdOutput": HANDLE,
-    "hStdError": HANDLE
-})
-let StartupInfoPtr = ref.refType(StartupInfo);
-
-
-let SecurityAttributes = Struct({
-    "nLength": DWORD,
-    "lpSecurityDescriptor": LPVOID,
-    "bInheritHandle": ref.types.bool
-})
-let SecurityAttributesPtr = ref.refType(SecurityAttributes);
-
-let ProcessInformation = Struct({
-    "hProcess": IntPtr,
-    "hThread": IntPtr,
-    "dwProcessId": ref.types.uint,
-    "dwThreadId": ref.types.uint
-})
-let ProcessInformationPtr = ref.refType(ProcessInformation);
+const INFINITE = 0xFFFFFFFF;
 
 const kernel32 = new ffi.Library("Kernel32", {
     "OpenProcess": ["int32", ["ulong", "byte", "ulong"]],
-    "GetSystemInfo": ["void", [SystemInfoPtr]],
-    "GetStartupInfoA": ["void", [StartupInfoPtr]],
-    "CreateProcessA": ["bool", ["CString", LPTSTR, SecurityAttributesPtr, SecurityAttributesPtr, "bool", DWORD, DWORD, "CString", StartupInfo, ProcessInformationPtr]]
+    "GetSystemInfo": ["void", [ref.refType(SystemInfo)]],
+    "GetStartupInfoA": ["void", [ref.refType(StartupInfo)]],
+    "CreateProcessA": [BOOL,
+        ["CString",
+            ref.refType(LPTSTR),
+            ref.refType(SecurityAttributes),
+            ref.refType(SecurityAttributes),
+            BOOL,
+            DWORD,
+            DWORD,
+            ref.types.CString,
+            StartupInfo,
+            ref.refType(ProcessInformation)
+        ]],
+    "WaitForDebugEventEx": [BOOL, [ref.refType(DebugEvent), DWORD]],
+    "ContinueDebugEvent": [BOOL, [DWORD, DWORD, DWORD]],
+    "GetLastError": [DWORD, []],
+    "CloseHandle": [BOOL, [HANDLE]],
+    "DebugActiveProcess": [BOOL, [DWORD]]
+
 });
 
 
@@ -69,23 +35,43 @@ module.exports = {
         return kernel32.OpenProcess(2097151, 0, processId);
     },
     getSystemInfo: () => {
-        // let info = ref.alloc(SystemInfoPtr);
         let info = ref.alloc(SystemInfo);
         kernel32.GetSystemInfo(info);
         return info.deref();
     },
     getStartupInfo: () => {
-        let info = ref.alloc(StartupInfo);
-        kernel32.GetStartupInfoA(info);
-        return info.deref();
+        let pStartupInfo = ref.alloc(StartupInfo);
+        kernel32.GetStartupInfoA(pStartupInfo);
+        return pStartupInfo.deref();
     },
     createProcess: (filePath, startupInfo) => {
-        let processInformation = ref.alloc(ProcessInformation);
-        let ok = kernel32.CreateProcessA(filePath, null, null, null, false, 0x00000001 + 0x00000002, 0, null, startupInfo, processInformation);
+        let pProcessInformation = ref.alloc(ProcessInformation);
+        let pCommandLine = null//ref.alloc(ref.types.CString);
+        let ok = kernel32.CreateProcessA(filePath, pCommandLine, null, null, false, 0x1 + 0x2, null, null, startupInfo, pProcessInformation);
         return {
             isOk: ok,
-            processInformation: processInformation
+            processInformation: pProcessInformation.deref()
         }
+    },
+    waitForDebugEvent: () => {
+        let pDebugEvent = ref.alloc(DebugEvent);
+        let ok = kernel32.WaitForDebugEventEx(pDebugEvent, INFINITE);
+        return {
+            isOk: ok,
+            debugEvent: pDebugEvent.deref()
+        }
+    },
+    continueDebugEvent: (processId, threadId, debugStatus) => {
+        return kernel32.ContinueDebugEvent(processId, threadId, debugStatus);
+    },
+    getLastError: () => {
+        return kernel32.GetLastError();
+    },
+    closeHandle: (handle) => {
+        return kernel32.CloseHandle(handle)
+    },
+    debugActiveProcess: (processId) => {
+        return kernel32.DebugActiveProcess(processId);
     }
 
 }
